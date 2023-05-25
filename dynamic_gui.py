@@ -207,4 +207,16 @@ def save_play_audio(text:str='',file_path:str="welcome.mp3"):
   save_audio(text=text,file_path=file_path)
   thread = threading.Thread(target=play_audio, args=(file_path,))
   thread.start()
-#while_basic(win=get_window('display',[[get_gui_fun(name='Multiline',args={"sdasdfsdf":"","default_text":"hey"})]]))
+#example of simple modularization
+while_basic(win=get_gui_fun('Window',{'title':'display',"layout":[[get_gui_fun(name='Multiline',args={"sdasdfsdf":"","default_text":"hey"})]]}))
+#ecample of complex modularization
+while_basic_events(
+  get_gui_fun('Window',{'title':'chat GPT output', 'layout':[[
+    get_gui_fun('T',{'text':'query: '}),
+    get_gui_fun('Multiline',{'default_text':'this is a question',"size": (None, None),"scrollable": True,"auto_size_text": True,"expand_x": True,"expand_y": True})],[
+      get_gui_fun('T',{'text':'response: '}),
+      get_gui_fun('Multiline', {'default_text': 'this is an answer', 'key': "-RESPONSE-","size": (None, None),"scrollable": True,"auto_size_text": True,"expand_x": True,"expand_y": True}),[
+        get_gui_fun('Button', {"button_text": 'Play Audio', "key": '-PLAY_AUDIO-'})]]],"resizable": True,"size": (300, 300)}),
+  events={'-PLAY_AUDIO-': {"name": "save_play_audio", "instance": None, "global": None,
+                           "args": {"text": {"type": "get", "name": "get_value", "args": {"st": "-RESPONSE-"}}, "file_path": "new_audio.mp3"}}}
+  )
