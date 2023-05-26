@@ -13,4 +13,4 @@
 
 7. **Error Handling**: The `main` function handles exceptions to avoid abrupt termination of the program. But error handling could be improved in certain parts, especially in API interactions.
 
-Overall, the code is quite advanced and complex, and seems well-structured and modular. Some functions are missing, and there is
+Overall, the code is quite advanced and complex, and seems well-structured and modular.
