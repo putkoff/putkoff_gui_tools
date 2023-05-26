@@ -2,11 +2,12 @@ import threading
 import PySimpleGUI as sg
 import inspect
 import os
+def expandable(size:tuple=(None, None)):
+    return {"size": size,"resizable": True,"scrollable": True,"auto_size_text": True,"expand_x":True,"expand_y": True}
 def change_glob(string:str,obj:any):
   globals()[string]=obj
   return obj
 change_glob('all_windows',{'last_window':{'name':'','values':{},'event':''}})
-
 def get_glob(obj:str='',glob=globals()):
     try:
         return glob[obj]
@@ -18,7 +19,6 @@ def call_functions(function_name: str, args: dict = None, instance=None, glob=gl
       glob = globals()
     if args is None:
         args = {}
-
     if instance is not None:
         # Calls method on instance
         method = getattr(instance, function_name)
@@ -44,44 +44,35 @@ def get_fun(js):
     function_args = js.get('args', {})
     instance = js.get('instance')
     glob = js.get('global')
-    
     # Process arguments
     function_args = process_args(function_args)
-    
     # If instance is not None, get the function from the instance, else get from globals
     if instance is not None:
         function = getattr(instance, function_name)
     else:
         function = glob[function_name]
-
     # Get function's valid parameter keys
     sig = inspect.signature(function)
     valid_keys = sig.parameters.keys()
-
     # Filter arguments to only those accepted by the function
     filtered_args = {k: v for k, v in function_args.items() if k in valid_keys}
-
     return call_functions(function_name, filtered_args, instance, glob)
-#getattr(instance, function_name)   
-#selfs
-
-
 #progress_bars
 def update_progress(win:str='progress_window',st:str='bar',progress:(int or float)=0):
     win[st].update_bar(progress)
 def get_progress_bar(max_value:int=100, size:tuple=(30,10),key:str='bar'):
-    return sg.ProgressBar(max_value=max_value, size=size, key=key)
+    return get_gui_fun('ProgressBar',{"max_value":max_value, "size":size, "key":key})
 #windows
 def get_window(title:str='basic window',layout:list=[[]]):
     return sg.Window(title, layout)
-def veri_win(win:any=None):
+def verify_window(win:any=None):
   if type(win) == str:
     win = get_glob(obj=win)
   if type(win) == type(get_window()):
     return True
   return False
 def close_window(win:any=None):
-  if veri_win(win):
+  if verify_window(win):
     win.close()
 #components
 def get_gui_fun(name:str='',args:dict={}):
@@ -94,13 +85,13 @@ def win_closed(event:str=''):
 def T_or_F_obj_eq(event:any='',obj:any=''):
   return True if event == obj else False
 def det_bool_T(obj:(tuple or list or bool)=False):
-  if T_or_F_obj_eq(type(obj),bool):
+  if isinstance(obj, bool):
     return obj 
-  return True if True in obj else False
+  return any(obj)
 def det_bool_F(obj:(tuple or list or bool)=False):
-  if T_or_F_obj_eq(type(obj),bool):
+  if isinstance(obj, bool):
     return obj
-  return True if False in obj else False
+  return all(obj)
 #number_verifications
 def out_of_bounds(upper:(int or float)=100,lower:(int or float)=0,obj:(int or float)=-1):
   return det_bool_T(obj > 100 or obj < 0)
@@ -113,20 +104,22 @@ def create_win_name():
     i +=1
   return curr_try
 #while_windows
+def js_horis_for(js,st,ls,ls2):
+    js[st][[each for each in ls]]=[each for each in ls2]
+    return js
 def update_read(curr_win:type(get_window()),win_name:str=create_win_name()):
     all_windows = get_glob('all_windows')
     event, values = curr_win.read()
     if win_name not in all_windows:
       all_windows[win_name] = {'event':'','values':{}}
       change_glob(win_name,curr_win)
-    all_windows[win_name]['event']=event
-    all_windows[win_name]['values']=values
-    all_windows['last_window']['name']=win_name
-    all_windows['last_window']['event']=event
-    all_windows['last_window']['values']=values
-    change_glob('all_windows',all_windows)
+    change_glob('all_windows',js_horis_for(all_windows,win_name,['event','values'],[event,values]))
+    change_glob('all_windows',js_horis_for(all_windows,'last_window',['name','event','values'],[win_name,event,values]))
+def get_js_st(js,st):
+  if st in js:
+    return js[st]
 def while_basic_events(event_win:type(get_window())=get_window(),win_name:str=create_win_name(),events:dict={}):
-    while veri_win(event_win):
+    while verify_window(event_win):
         update_read(curr_win=event_win,win_name='event_win')
         if win_closed(get_event(event_win)):
             break
@@ -136,12 +129,12 @@ def while_basic_events(event_win:type(get_window())=get_window(),win_name:str=cr
           if T_or_F_obj_eq(event=get_event(curr_win=win_name),obj=key):
             func_specs = events[key]
             args = process_args(func_specs['args'])
-            call_functions(args=args, instance=func_specs['instance'], function_name=func_specs['name'])
+            call_functions(args=args, instance=get_js_st(func_specs,'instance'), function_name=get_js_st(func_specs,'name'))
     close_window(event_win)
 def while_basic(win=None):
     if win is None:
         win = get_glob(obj='window')
-    while veri_win(win):
+    while verify_window(win):
         event, values = win.read()
         if win_closed(event):
             break
@@ -151,7 +144,7 @@ def get_last_window():
 def while_progress(win=None, progress:int=0, step:int=5, thread=None):
     if win is None:
         win = get_last_window()
-    while veri_win(win):
+    while verify_window(win):
       event, values = win.read(timeout=100)
       if win_closed(event) or not thread_alive(thread):
           break
@@ -163,7 +156,6 @@ def while_progress(win=None, progress:int=0, step:int=5, thread=None):
     close_window(win)
 #values
 def get_value(curr_win:(str or type(get_window()))='last_window',st:str=''):
-  
   all_windows=get_glob('all_windows')
   win_name = curr_win
   if type(curr_win) == type(get_window()):
@@ -180,7 +172,6 @@ def get_event(curr_win:(str or type(get_window()))='last_window',st:str=''):
     win_name = 'last_window'
   curr_js = all_windows[win_name]
   return curr_js['event']
-
 #threading
 def get_thread(target=None,args=(),daemon=True):
     return threading.Thread(target=target, args=args, daemon=daemon)
@@ -207,16 +198,18 @@ def save_play_audio(text:str='',file_path:str="welcome.mp3"):
   save_audio(text=text,file_path=file_path)
   thread = threading.Thread(target=play_audio, args=(file_path,))
   thread.start()
-#example of simple modularization
-while_basic(win=get_gui_fun('Window',{'title':'display',"layout":[[get_gui_fun(name='Multiline',args={"sdasdfsdf":"","default_text":"hey"})]]}))
-#ecample of complex modularization
-while_basic_events(
-  get_gui_fun('Window',{'title':'chat GPT output', 'layout':[[
-    get_gui_fun('T',{'text':'query: '}),
-    get_gui_fun('Multiline',{'default_text':'this is a question',"size": (None, None),"scrollable": True,"auto_size_text": True,"expand_x": True,"expand_y": True})],[
-      get_gui_fun('T',{'text':'response: '}),
-      get_gui_fun('Multiline', {'default_text': 'this is an answer', 'key': "-RESPONSE-","size": (None, None),"scrollable": True,"auto_size_text": True,"expand_x": True,"expand_y": True}),[
-        get_gui_fun('Button', {"button_text": 'Play Audio', "key": '-PLAY_AUDIO-'})]]],"resizable": True,"size": (300, 300)}),
-  events={'-PLAY_AUDIO-': {"name": "save_play_audio", "instance": None, "global": None,
-                           "args": {"text": {"type": "get", "name": "get_value", "args": {"st": "-RESPONSE-"}}, "file_path": "new_audio.mp3"}}}
-  )
+def simple():
+  #example of simple modularization
+  while_basic(win=get_gui_fun('Window',{'title':'display',"layout":[[get_gui_fun('Multiline',{"sdasdfsdf":"","default_text":"hey"})]]}))
+def complex():
+  #ecample of complex modularization
+  while_basic_events(
+    get_gui_fun('Window',{'title':'chat GPT output', 'layout':[[
+      get_gui_fun('T',{'text':'query: '}),
+      get_gui_fun('Multiline',{'default_text':'this is a question',**expandable()})],[
+        get_gui_fun('T',{'text':'response: '}),
+        get_gui_fun('Multiline', {'default_text': 'this is an answer', 'key': "-RESPONSE-",**expandable()}),[
+          get_gui_fun('Button', {"button_text": 'Play Audio', "key": '-PLAY_AUDIO-'})]]],**expandable(size=(300,300))}),
+    events={'-PLAY_AUDIO-': {"type": "get","name": "save_play_audio",
+                             "args": {"text": {"type": "get", "name": "get_value", "args": {"st": "-RESPONSE-"}}, "file_path": "new_audio.mp3"}}}
+    )
