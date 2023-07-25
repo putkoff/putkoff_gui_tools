@@ -19,26 +19,22 @@ The following example creates a window with a resizable, scrollable text area an
 ```python
 import dynamic_gui as dg
 
-layout = [
-    [dg.get_gui_fun('Text', {"key": "txt"})],
-    [dg.get_progress_bar(max_value=100, key='bar')]
-]
-window = dg.get_window(title='My Window', layout=layout)
+#####basic_implimentation
+while_basic(win=get_gui_fun('Window',{'title':'display',"layout":[[get_gui_fun('Multiline',{"sdasdfsdf":"","default_text":"hey"})]]}))
 
-def fill_progress_bar():
-    for i in range(101):
-        dg.update_progress(win=window, st='bar', progress=i)
-        time.sleep(0.1)
 
-thread = dg.get_thread(target=fill_progress_bar)
-dg.start_thread(thread)
+#####complex implimentation
+while_basic_events(
+    get_gui_fun('Window',{'title':'chat GPT output', 'layout':[[
+      get_gui_fun('T',{'text':'query: '}),
+      get_gui_fun('Multiline',{'default_text':'this is a question',**expandable()})],[
+        get_gui_fun('T',{'text':'response: '}),
+        get_gui_fun('Multiline', {'default_text': 'this is an answer', 'key': "-RESPONSE-",**expandable()}),[
+          get_gui_fun('Button', {"button_text": 'Play Audio', "key": '-PLAY_AUDIO-'})]]],**expandable(size=(300,300))}),
+    events={'-PLAY_AUDIO-': {"type": "get","name": "save_play_audio",
+                             "args": {"text": {"type": "get", "name": "get_value", "args": {"st": "-RESPONSE-"}}, "file_path": "new_audio.mp3"}}}
+    )
 
-while True:
-    event, values = window.read()
-    if dg.win_closed(event):
-        break
-
-dg.close_window(window)
 ```
 
 ## Getting Started
